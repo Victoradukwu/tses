@@ -15,7 +15,7 @@ if exists(env_file):
 
 SECRET_KEY = env('DJANGO_SECRET_KEY')
 DEBUG = True
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition

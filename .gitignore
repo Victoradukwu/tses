@@ -82,13 +82,6 @@ staticfiles/
 uploads/
 .vscode/
 
-# Terraform
-.terraform/
-*.tfvars
-*.tfstate
-*.tfstate.backup
-
-
 # IDE
 .idea/
 
@@ -96,4 +89,4 @@ uploads/
 .DS_Store
 
 
-pyproject.toml
+*.sqlite3
