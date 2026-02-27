@@ -1,4 +1,5 @@
 import secrets
+from datetime import timedelta
 from typing import Any, cast
 
 import redis
@@ -12,7 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from tasks import Audit, create_audit_log
 from tasks import send_otp as send_otp_task
 
-OTP_TTL_SECONDS = 5 * 60
+OTP_TTL_SECONDS = 50 * 60
 EMAIL_RATE_LIMIT_WINDOW_SECONDS = 10 * 60
 IP_RATE_LIMIT_WINDOW_SECONDS = 60 * 60
 MAX_OTP_REQUESTS_PER_EMAIL = 3
@@ -68,15 +69,17 @@ def _enforce_rate_limit(client: redis.Redis, key: str, limit: int, ttl_seconds: 
         )
 
 
-def get_tokens_for_user(user:User)->dict[str, str]:
+def get_tokens_for_user(user: User) -> dict[str, str]:
     if not user.is_active:
         raise AuthenticationFailed("User is not active")
 
     refresh = RefreshToken.for_user(user)
+    access_token = refresh.access_token
+    access_token.set_exp(lifetime=timedelta(hours=24))
 
     return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
+        "refresh": str(refresh),
+        "access": str(access_token),
     }
 
 
@@ -135,7 +138,8 @@ def validate_otp(otp: str, email: str) -> dict[str, int | bool]:
     failed_attempts_key = f"otp:verify:failed:{normalized_email}"
     client = _redis_client()
 
-    failed_attempts = cast(int, client.get(failed_attempts_key) or 0)
+    failed_attempts_raw = client.get(failed_attempts_key)
+    failed_attempts = int(failed_attempts_raw) if failed_attempts_raw is not None else 0  # type: ignore
     lock_ttl = cast(int, client.ttl(failed_attempts_key))
 
     if failed_attempts >= MAX_FAILED_OTP_ATTEMPTS_PER_EMAIL and lock_ttl > 0:

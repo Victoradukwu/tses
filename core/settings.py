@@ -21,21 +21,20 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # Third party apps
-    'drf_spectacular',
-    'rest_framework',
-    'rest_framework.authtoken',
-
+    "drf_spectacular",
+    "rest_framework",
+    "rest_framework.authtoken",
+    "django_filters",
     # Project apps
-    'apps.accounts',
-    'apps.audit'
+    "apps.accounts",
+    "apps.audit",
 ]
 
 MIDDLEWARE = [
@@ -67,34 +66,31 @@ TEMPLATES = [
 ]
 
 REST_FRAMEWORK = {
-    'DATE_FORMAT': '%d-%m-%Y',
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny'
+    "DATE_FORMAT": "%d-%m-%Y",
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+    "DEFAULT_PARSER_CLASSES": [
+        "djangorestframework_camel_case.parser.CamelCaseFormParser",
+        "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
+        "djangorestframework_camel_case.parser.CamelCaseJSONParser",
+        "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
     ],
-    'DEFAULT_PARSER_CLASSES': [
-            'djangorestframework_camel_case.parser.CamelCaseFormParser',
-            'djangorestframework_camel_case.parser.CamelCaseMultiPartParser',
-            'djangorestframework_camel_case.parser.CamelCaseJSONParser',
-            'rest_framework.parsers.JSONParser',
-            'rest_framework.parsers.FormParser',
-            'rest_framework.parsers.MultiPartParser',
-        ],
-    'DEFAULT_RENDERER_CLASSES': [
-                'djangorestframework_camel_case.render.CamelCaseJSONRenderer',
-                'djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer',
-                'rest_framework.renderers.JSONRenderer',
-                'rest_framework.renderers.BrowsableAPIRenderer',
-            ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'JSON_UNDERSCOREIZE': {
-            'no_underscore_before_number': True
-        },
-    'EXCEPTION_HANDLER': 'core.utils.custom_exception_handler',
+    "DEFAULT_RENDERER_CLASSES": [
+        "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
+        "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "JSON_UNDERSCOREIZE": {"no_underscore_before_number": True},
+    "EXCEPTION_HANDLER": "core.utils.custom_exception_handler",
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
 }
 
 
@@ -124,21 +120,32 @@ FROM_EMAIL = 'The TSES Team'
 
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'TSES API',
-    'DESCRIPTION': 'Django API sample project',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-    'CAMELIZE_NAMES': True,
-    'SCHEMA_PATH_PREFIX': '/api/v1/',
-    'AUTHENTICATION_WHITELIST': [
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.SessionAuthentication'
+    "TITLE": "TSES API",
+    "DESCRIPTION": "Django API sample project",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "CAMELIZE_NAMES": True,
+    "SCHEMA_PATH_PREFIX": "/api/v1/",
+    "AUTHENTICATION_WHITELIST": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ],
-    'POSTPROCESSING_HOOKS': [
-            'drf_spectacular.hooks.postprocess_schema_enums',
-            'drf_spectacular.contrib.djangorestframework_camel_case.camelize_serializer_fields'
-        ],
-    'COMPONENT_SPLIT_REQUEST': True,
+    "APPEND_COMPONENTS": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+            }
+        }
+    },
+    # "SECURITY": [{"BearerAuth": []}],
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "drf_spectacular.contrib.djangorestframework_camel_case.camelize_serializer_fields",
+    ],
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 # Celery
