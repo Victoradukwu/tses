@@ -1,20 +1,8 @@
-import time
-from datetime import datetime
-
 from django.conf import settings
 from django.core.mail import send_mail
 
 from apps.audit.models import Audit
 from celery_app import app as celery_app
-
-
-@celery_app.task(name="tasks.addition")
-def add_numbers(a: int, b: int) -> int:
-    x = time.time()
-    time.sleep(10)
-    y = time.time()
-    print(f"HHHHJJJ: {y - x}")
-    return a + b
 
 
 @celery_app.task(name="tasks.send_otp")
@@ -32,12 +20,6 @@ def send_otp(email: str, otp: str, ttl_minutes: int):
 
 
 @celery_app.task(name="tasks.create_audit_log")
-def create_audit_log(event: str, email: str, ip_address: str, user_agent: str, metadata: dict, created_at: datetime):
-    dt = {
-        "event": event,
-        "ip_address": ip_address,
-        "user_agent": user_agent,
-        "metadata": metadata,
-        "created_at": created_at,
-    }
+def create_audit_log(event: str, email: str, ip_address: str, user_agent: str, metadata: dict):
+    dt = {"event": event, "ip_address": ip_address, "user_agent": user_agent, "metadata": metadata}
     Audit.objects.create(**dt)

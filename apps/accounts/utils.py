@@ -17,6 +17,8 @@ EMAIL_RATE_LIMIT_WINDOW_SECONDS = 10 * 60
 IP_RATE_LIMIT_WINDOW_SECONDS = 60 * 60
 MAX_OTP_REQUESTS_PER_EMAIL = 3
 MAX_OTP_REQUESTS_PER_IP = 10
+OTP_VERIFY_LOCKOUT_WINDOW_SECONDS = 15 * 60
+MAX_FAILED_OTP_ATTEMPTS_PER_EMAIL = 5
 
 
 def get_request_data(request: HttpRequest) -> dict[str, Any]:
@@ -116,10 +118,66 @@ def generate_otp(email: str, request: HttpRequest) -> dict[str, str | int]:
     otp_key = f"otp:code:{normalized_email}"
     client.set(name=otp_key, value=otp, ex=OTP_TTL_SECONDS)
 
-    send_otp_task.delay(normalized_email, otp, OTP_TTL_SECONDS // 60) # type: ignore
-    create_audit_log.delay(Audit.OTP_REQUESTED, normalized_email, ip_address, request_data.get('user_agent'), request_data.get('metadata'), request_data.get('created_at')) # type: ignore
+    send_otp_task.delay(normalized_email, otp, OTP_TTL_SECONDS // 60)  # type: ignore
+    create_audit_log.delay(  # type: ignore
+        Audit.OTP_REQUESTED, normalized_email, ip_address, request_data.get("user_agent"), request_data.get("metadata")
+    )
     return {
         "email": normalized_email,
         "otp": otp,
         "expires_in": OTP_TTL_SECONDS,
+    }
+
+
+def validate_otp(otp: str, email: str) -> dict[str, int | bool]:
+    normalized_email = email.strip().lower()
+    otp_key = f"otp:code:{normalized_email}"
+    failed_attempts_key = f"otp:verify:failed:{normalized_email}"
+    client = _redis_client()
+
+    failed_attempts = cast(int, client.get(failed_attempts_key) or 0)
+    lock_ttl = cast(int, client.ttl(failed_attempts_key))
+
+    if failed_attempts >= MAX_FAILED_OTP_ATTEMPTS_PER_EMAIL and lock_ttl > 0:
+        return {
+            "is_valid": False,
+            "is_locked": True,
+            "unlock_eta": lock_ttl,
+        }
+
+    stored_otp = cast(str | None, client.get(otp_key))
+
+    if stored_otp is None:
+        failed_attempts, lock_ttl = _increment_with_ttl(
+            client=client,
+            key=failed_attempts_key,
+            ttl_seconds=OTP_VERIFY_LOCKOUT_WINDOW_SECONDS,
+        )
+        return {
+            "is_valid": False,
+            "is_locked": failed_attempts >= MAX_FAILED_OTP_ATTEMPTS_PER_EMAIL,
+            "unlock_eta": max(lock_ttl, 0),
+        }
+
+    is_valid = secrets.compare_digest(stored_otp, otp.strip())
+    if is_valid:
+        client.delete(otp_key)
+        client.delete(failed_attempts_key)
+
+        return {
+            "is_valid": True,
+            "is_locked": False,
+            "unlock_eta": 0,
+        }
+
+    failed_attempts, lock_ttl = _increment_with_ttl(
+        client=client,
+        key=failed_attempts_key,
+        ttl_seconds=OTP_VERIFY_LOCKOUT_WINDOW_SECONDS,
+    )
+
+    return {
+        "is_valid": False,
+        "is_locked": failed_attempts >= MAX_FAILED_OTP_ATTEMPTS_PER_EMAIL,
+        "unlock_eta": max(lock_ttl, 0),
     }
