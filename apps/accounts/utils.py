@@ -13,7 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from tasks import Audit, create_audit_log
 from tasks import send_otp as send_otp_task
 
-OTP_TTL_SECONDS = 50 * 60
+OTP_TTL_SECONDS = 5 * 60
 EMAIL_RATE_LIMIT_WINDOW_SECONDS = 10 * 60
 IP_RATE_LIMIT_WINDOW_SECONDS = 60 * 60
 MAX_OTP_REQUESTS_PER_EMAIL = 3
