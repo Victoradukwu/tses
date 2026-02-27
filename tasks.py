@@ -1,7 +1,11 @@
 import time
+from datetime import datetime
 
+from django.conf import settings
+from django.core.mail import send_mail
+
+from apps.audit.models import Audit
 from celery_app import app as celery_app
-from django.conf import settings  # noqa: F401
 
 
 @celery_app.task(name="tasks.addition")
@@ -11,3 +15,29 @@ def add_numbers(a: int, b: int) -> int:
     y = time.time()
     print(f"HHHHJJJ: {y - x}")
     return a + b
+
+
+@celery_app.task(name="tasks.send_otp")
+def send_otp(email: str, otp: str, ttl_minutes: int):
+    subject = "Your OTP Code"
+    message = f"Your one-time password is {otp}. It will expire in {ttl_minutes} minutes."
+
+    return send_mail(
+        subject=subject,
+        message=message,
+        from_email=settings.FROM_EMAIL,
+        recipient_list=[email],
+        fail_silently=False,
+    )
+
+
+@celery_app.task(name="tasks.create_audit_log")
+def create_audit_log(event: str, email: str, ip_address: str, user_agent: str, metadata: dict, created_at: datetime):
+    dt = {
+        "event": event,
+        "ip_address": ip_address,
+        "user_agent": user_agent,
+        "metadata": metadata,
+        "created_at": created_at,
+    }
+    Audit.objects.create(**dt)
