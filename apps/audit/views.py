@@ -1,6 +1,7 @@
 import math
 
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
@@ -10,6 +11,7 @@ from rest_framework.response import Response
 from apps.audit.filters import AuditFilter
 from apps.audit.serializers import AuditSerializer
 
+from .docs import LIST_LOGS
 from .models import Audit
 
 
@@ -27,6 +29,7 @@ class PageSizeAndNumberPagination(PageNumberPagination):
         return Response(resp_dct)
 
 
+@extend_schema(**LIST_LOGS)
 class AuditListView(generics.ListAPIView):
     serializer_class = AuditSerializer
     pagination_class = PageSizeAndNumberPagination

@@ -32,20 +32,20 @@ services:
       - db
       - redis
 
-  celery-beat:
-    build: .
-    command: >
-      sh -c "
-      python core/wait_for_db.py &&
-      celery -A core beat -l info
-      "
-    env_file:
-      - ./core/local.env
-    volumes:
-      - .:/app
-    depends_on:
-      - db
-      - redis
+  # celery-beat:
+  #   build: .
+  #   command: >
+  #     sh -c "
+  #     python core/wait_for_db.py &&
+  #     celery -A celery_app.app beat -l info
+  #     "
+  #   env_file:
+  #     - ./core/local.env
+  #   volumes:
+  #     - .:/app
+  #   depends_on:
+  #     - db
+  #     - redis
 
   db:
     image: postgres:16-alpine

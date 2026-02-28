@@ -6,11 +6,12 @@ from rest_framework.response import Response
 
 from tasks import Audit, create_audit_log
 
+from .docs import GET_OTP, VERIFY_OTP
 from .serializers import OTPRequestSerializer, OTPVerifySerializer
 from .utils import User, generate_otp, get_request_data, get_tokens_for_user, validate_otp
 
 
-@extend_schema(methods=["POST"], request=OTPRequestSerializer)
+@extend_schema(**GET_OTP)
 @api_view(["POST"])
 @parser_classes([CamelCaseJSONParser])
 def get_otp(request):
@@ -19,10 +20,10 @@ def get_otp(request):
     serializer.is_valid(raise_exception=True)
     email: str = serializer.validated_data.get("email")  # type: ignore
     _ = generate_otp(email, request)
-    return Response({"detail": "Please check your email"}, status=status.HTTP_202_ACCEPTED)
+    return Response({"message": "Accepted. Check your email", "status_code": 202}, status=status.HTTP_202_ACCEPTED)
 
 
-@extend_schema(methods=["POST"], request=OTPVerifySerializer)
+@extend_schema(**VERIFY_OTP)
 @api_view(["POST"])
 @parser_classes([CamelCaseJSONParser])
 def verify_otp(request):
