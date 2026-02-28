@@ -1,0 +1,61 @@
+services:
+  web:
+    build: .
+    command: >
+      sh -c "
+      python core/wait_for_db.py &&
+      python manage.py migrate &&
+      gunicorn core.wsgi:application --bind 0.0.0.0:8000
+      "
+    env_file:
+      - ./core/local.env
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+
+  celery:
+    build: .
+    command: >
+      sh -c "
+      python core/wait_for_db.py &&
+      celery -A celery_app.app worker -l info
+      "
+    env_file:
+      - ./core/local.env
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+
+  celery-beat:
+    build: .
+    command: >
+      sh -c "
+      python core/wait_for_db.py &&
+      celery -A core beat -l info
+      "
+    env_file:
+      - ./core/local.env
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:16-alpine
+    env_file:
+      - ./core/local.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+
+volumes:
+  postgres_data:

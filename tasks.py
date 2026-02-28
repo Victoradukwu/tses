@@ -21,5 +21,5 @@ def send_otp(email: str, otp: str, ttl_minutes: int):
 
 @celery_app.task(name="tasks.create_audit_log")
 def create_audit_log(event: str, email: str, ip_address: str, user_agent: str, metadata: dict):
-    dt = {"event": event, "ip_address": ip_address, "user_agent": user_agent, "metadata": metadata}
+    dt = {"event": event, "email": email, "ip_address": ip_address, "user_agent": user_agent, "metadata": metadata}
     Audit.objects.create(**dt)
