@@ -52,7 +52,7 @@ VERIFY_OTP = {
                 name="OTPVerifyLockedResponse",
                 fields={
                     "detail": serializers.CharField(default="Locked: too many failed OTP attempts. Try again later."),
-                    "unlock_eta": serializers.IntegerField(default=0),
+                    "unlock_eta_mins": serializers.IntegerField(default=0),
                 },
             ),
             description="Too many failed OTP attempts",

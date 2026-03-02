@@ -8,7 +8,7 @@ from tasks import Audit, create_audit_log
 
 from .docs import GET_OTP, VERIFY_OTP
 from .serializers import OTPRequestSerializer, OTPVerifySerializer
-from .utils import User, generate_otp, _get_request_data, get_tokens_for_user, validate_otp
+from .utils import User, _get_request_data, generate_otp, get_tokens_for_user, validate_otp
 
 
 @extend_schema(**GET_OTP)
@@ -39,10 +39,12 @@ def verify_otp(request):
 
     if validation_result.get("is_locked"):
         create_audit_log.delay(Audit.OTP_LOCKED, email, **data_)  # type: ignore
+        eta_secs = validation_result.get("unlock_eta", 0)
+        eta_mins = eta_secs // 60
         return Response(
             {
-                "detail": "Too many failed OTP attempts. Try again later.",
-                "unlock_eta": validation_result.get("unlock_eta", 0),
+                "detail": f"Locked: too many failed OTP attempts. Try again after {eta_mins} minutes.",
+                "unlock_eta_mins": eta_mins,
             },
             status=status.HTTP_423_LOCKED,
         )
