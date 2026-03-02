@@ -1,6 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.http.response import Http404
-from rest_framework.exceptions import AuthenticationFailed, NotAuthenticated, PermissionDenied
+from rest_framework.exceptions import AuthenticationFailed, NotAuthenticated, PermissionDenied, Throttled
 from rest_framework.response import Response
 
 
@@ -11,6 +11,8 @@ def custom_exception_handler(exc, context):
         status = 403
     elif type(exc) in [ObjectDoesNotExist, Http404]:
         status = 404
+    elif type(exc) is Throttled:
+        status = 429
     else:
         status = 400
 

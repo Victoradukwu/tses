@@ -21,7 +21,9 @@ GET_OTP = {
             response=inline_serializer(
                 name="OTPRequestThrottledResponse",
                 fields={
-                    "message": serializers.CharField(default="Too many requests"),
+                    "message": serializers.CharField(
+                        default="Too many OTP requests for this email. Try again later. Expected available in 375 seconds."
+                    ),
                     "status_code": serializers.IntegerField(default=429),
                 },
             ),

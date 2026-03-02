@@ -13,16 +13,21 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from tasks import Audit, create_audit_log
 from tasks import send_otp as send_otp_task
 
-OTP_TTL_SECONDS = 5 * 60
+
 EMAIL_RATE_LIMIT_WINDOW_SECONDS = 10 * 60
-IP_RATE_LIMIT_WINDOW_SECONDS = 60 * 60
 MAX_OTP_REQUESTS_PER_EMAIL = 3
+
+IP_RATE_LIMIT_WINDOW_SECONDS = 60 * 60
 MAX_OTP_REQUESTS_PER_IP = 10
+
+OTP_TTL_SECONDS = 5 * 60
 OTP_VERIFY_LOCKOUT_WINDOW_SECONDS = 15 * 60
 MAX_FAILED_OTP_ATTEMPTS_PER_EMAIL = 5
 
 
-def get_request_data(request: HttpRequest) -> dict[str, Any]:
+def _get_request_data(request: HttpRequest) -> dict[str, Any]:
+    """Returns a dictionary containing the request origin ip, the user agent and the request payload"""
+
     forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
     if forwarded_for:
         ip_address = forwarded_for.split(",")[0].strip()
@@ -49,6 +54,7 @@ def _redis_client() -> redis.Redis:
 
 
 def _increment_with_ttl(client: redis.Redis, key: str, ttl_seconds: int) -> tuple[int, int]:
+    """For a redis cache key, increment its value and return the new value and the remaining TTL. If the key does not exist(-2) or if it does not have expiration(-1), we set it to expire after `ttl_seconds` seconds"""
     count = cast(int, client.incr(key))
     ttl_remaining = cast(int, client.ttl(key))
 
@@ -77,10 +83,7 @@ def get_tokens_for_user(user: User) -> dict[str, str]:
     access_token = refresh.access_token
     access_token.set_exp(lifetime=timedelta(hours=24))
 
-    return {
-        "refresh": str(refresh),
-        "access": str(access_token),
-    }
+    return {"refresh": str(refresh), "access": str(access_token)}
 
 
 def generate_otp(email: str, request: HttpRequest) -> dict[str, str | int]:
@@ -88,13 +91,13 @@ def generate_otp(email: str, request: HttpRequest) -> dict[str, str | int]:
 
     Args:
         email (str): The user's email
-        ip_address (str | None): The caller's IP address
+        request (HTTPRequest): HTTPRequest object
 
     Returns:
         dict[str, str | int]: OTP metadata
     """
-    request_data = get_request_data(request)
-    ip_address = request_data.get('ip_address')
+    data_ = _get_request_data(request)
+    ip_address = data_.get("ip_address")
     normalized_email = email.strip().lower()
     normalized_ip = (ip_address or "unknown").strip().lower()
     client = _redis_client()
@@ -122,14 +125,8 @@ def generate_otp(email: str, request: HttpRequest) -> dict[str, str | int]:
     client.set(name=otp_key, value=otp, ex=OTP_TTL_SECONDS)
 
     send_otp_task.delay(normalized_email, otp, OTP_TTL_SECONDS // 60)  # type: ignore
-    create_audit_log.delay(  # type: ignore
-        Audit.OTP_REQUESTED, normalized_email, ip_address, request_data.get("user_agent"), request_data.get("metadata")
-    )
-    return {
-        "email": normalized_email,
-        "otp": otp,
-        "expires_in": OTP_TTL_SECONDS,
-    }
+    create_audit_log.delay(Audit.OTP_REQUESTED, normalized_email, **data_)  # type: ignore
+    return {"email": normalized_email, "otp": otp, "expires_in": OTP_TTL_SECONDS}
 
 
 def validate_otp(otp: str, email: str) -> dict[str, int | bool]:
